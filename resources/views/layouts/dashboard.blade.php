@@ -147,9 +147,9 @@
         }
     </script>
 
-    <script src="{{ asset('js/dashboard.js') }}"></script>
-    <script src="{{ asset('js/charts.js') }}"></script>
-    <script src="{{ asset('js/pump-control.js') }}"></script>
+    <script src="{{ asset('js/dashboard.js') }}?v=2"></script>
+    <script src="{{ asset('js/charts.js') }}?v=2"></script>
+    <script src="{{ asset('js/pump-control.js') }}?v=2"></script>
     @yield('scripts')
 </body>
 </html>

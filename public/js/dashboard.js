@@ -110,6 +110,9 @@ const SmartAquaDashboard = (function () {
         var p = data.pump;
         var cfg = window.SmartAqua.pondConfig;
 
+        // Debug log to help diagnose display issues
+        console.log('[Dashboard] latestData:', { reading: r, pump: p });
+
         if (r) {
             // Water level
             animateValue('water-level-value', r.water_level);
