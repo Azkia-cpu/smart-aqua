@@ -35,8 +35,8 @@
 // ============================================================
 // KONFIGURASI WiFi
 // ============================================================
-const char* WIFI_SSID     = "ATAR ATAS";        // Ganti dengan SSID WiFi
-const char* WIFI_PASSWORD = "atar1234";     // Ganti dengan password WiFi
+const char* WIFI_SSID     = "OPPO A74";        // Ganti dengan SSID WiFi
+const char* WIFI_PASSWORD = "12345678";     // Ganti dengan password WiFi
 
 // ============================================================
 // KONFIGURASI SERVER LARAVEL (Cloudflare - HTTPS)

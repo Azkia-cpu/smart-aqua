@@ -111,7 +111,13 @@ const SmartAquaDashboard = (function () {
         var cfg = window.SmartAqua.pondConfig;
 
         // Debug log to help diagnose display issues
-        console.log('[Dashboard] latestData:', { reading: r, pump: p });
+        console.log('[Dashboard] latestData:', {
+            water_level: r ? r.water_level : null,
+            ph_value: r ? r.ph_value : null,
+            flow_rate: r ? r.flow_rate : null,
+            reading: r,
+            pump: p
+        });
 
         if (r) {
             // Water level
@@ -171,10 +177,15 @@ const SmartAquaDashboard = (function () {
     --------------------------------------------------------------- */
     function animateValue(id, value) {
         var el = document.getElementById(id);
-        if (!el) return;
+        if (!el) {
+            console.warn('[Dashboard] Element not found:', id);
+            return;
+        }
         var formatted = (typeof value === 'number')
             ? (Number.isInteger(value) ? String(value) : value.toFixed(1))
             : String(value);
+
+        console.log('[Dashboard] Updating', id, '->', formatted, '(raw:', value, ')');
 
         if (el.textContent !== formatted) {
             el.textContent = formatted;
