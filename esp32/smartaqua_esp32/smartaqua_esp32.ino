@@ -95,10 +95,20 @@ float MAX_WATER_LEVEL = 9.0;  // Pompa OFF di atas ini
 float PH_OFFSET = 21.34;
 float PH_SLOPE  = -5.70;
 
-// Status kalibrasi dua titik (pH 7 dan pH 4)
+// Status kalibrasi
 bool   phCalibrated    = false;
 float  phVoltageAt7    = 0.0;
 float  phVoltageAt4    = 0.0;
+
+// Status kalibrasi CALIB_NOW dua titik otomatis
+bool   hasCalibPoint1       = false;
+float  calibPoint1Ph        = 0.0;
+float  calibPoint1Voltage   = 0.0;
+
+// Filter EMA (Exponential Moving Average) untuk smoothing pH
+float  smoothedPhValue      = 7.0;
+bool   phFilterInitialized  = false;
+#define PH_EMA_ALPHA         0.15   // 0.1=sangat halus, 0.3=lebih responsif
 
 // Kalibrasi Flow Sensor (YF-S201)
 // Pulse per liter: 450 (dari datasheet)
@@ -440,82 +450,117 @@ void bacaSensorLevel() {
 }
 
 // ============================================================
-// BACA SENSOR pH
+// BACA SENSOR pH (dengan EMA smoothing filter)
 // ============================================================
 void bacaSensorPH() {
     float voltage = readPhVoltage();
     if (voltage < 0) return;
 
     // Konversi tegangan ke nilai pH menggunakan kalibrasi
-    float phValue = PH_OFFSET + (PH_SLOPE * voltage);
+    float rawPh = PH_OFFSET + (PH_SLOPE * voltage);
 
     // Clamp ke range pH valid (0-14)
-    if (phValue < 0) phValue = 0;
-    if (phValue > 14) phValue = 14;
+    rawPh = constrain(rawPh, 0.0, 14.0);
 
-    // Bulatkan ke 1 desimal
-    currentPhValue = round(phValue * 10.0) / 10.0;
+    // Terapkan EMA (Exponential Moving Average) filter
+    // Ini PENTING karena sensor dengan sensitivitas rendah menghasilkan
+    // slope yang curam, sehingga noise kecil di voltage = lonjakan besar di pH
+    if (!phFilterInitialized) {
+        smoothedPhValue = rawPh;
+        phFilterInitialized = true;
+    } else {
+        smoothedPhValue = (PH_EMA_ALPHA * rawPh) + ((1.0 - PH_EMA_ALPHA) * smoothedPhValue);
+    }
+
+    // Bulatkan ke 1 desimal untuk display/kirim ke server
+    currentPhValue = round(smoothedPhValue * 10.0) / 10.0;
 
     Serial.print("[SENSOR] pH: ");
     Serial.print(currentPhValue);
-    Serial.print(" (V: ");
+    Serial.print(" (raw: ");
+    Serial.print(rawPh, 2);
+    Serial.print(", V: ");
     Serial.print(voltage, 3);
     Serial.println("V)");
 }
 
 // ============================================================
-// BACA TEGANGAN pH SENSOR (rata-rata 10 sampel)
+// BACA TEGANGAN pH SENSOR (rata-rata 50 sampel + outlier rejection)
 // Mengembalikan tegangan dalam Volt, atau -1 jika sensor error
 // ============================================================
 float readPhVoltage() {
-    long totalAdc = 0;
-    int validReadings = 0;
+    // Tahap 1: Baca 50 sampel ADC
+    float readings[50];
+    int validCount = 0;
 
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < 50; i++) {
         int adcValue = analogRead(PH_SENSOR_PIN);
         if (adcValue > 0 && adcValue < 4095) {
-            totalAdc += adcValue;
-            validReadings++;
+            readings[validCount] = adcValue * (3.3 / 4095.0);
+            validCount++;
         }
-        delayMicroseconds(100);
+        delayMicroseconds(200);
     }
 
-    if (validReadings == 0) {
+    if (validCount < 10) {
         Serial.println("[SENSOR] pH sensor error! Tidak ada pembacaan valid.");
         return -1.0;
     }
 
-    float avgAdc = (float)totalAdc / validReadings;
-    float voltage = avgAdc * (3.3 / 4095.0);
-    return voltage;
+    // Tahap 2: Hitung mean dan standar deviasi
+    float sum = 0;
+    for (int i = 0; i < validCount; i++) sum += readings[i];
+    float mean = sum / validCount;
+
+    float sqSum = 0;
+    for (int i = 0; i < validCount; i++) {
+        float diff = readings[i] - mean;
+        sqSum += diff * diff;
+    }
+    float stdDev = sqrt(sqSum / validCount);
+
+    // Tahap 3: Buang outlier (di luar 1.5 standar deviasi), hitung ulang
+    float filteredSum = 0;
+    int filteredCount = 0;
+    for (int i = 0; i < validCount; i++) {
+        if (abs(readings[i] - mean) <= 1.5 * stdDev) {
+            filteredSum += readings[i];
+            filteredCount++;
+        }
+    }
+
+    if (filteredCount < 5) {
+        // Fallback ke mean biasa jika terlalu banyak yang dibuang
+        return mean;
+    }
+
+    return filteredSum / filteredCount;
 }
 
 // ============================================================
-// KALIBRASI pH - SATU TITIK (CALIB_NOW) & DUA TITIK (PH7+PH4)
+// KALIBRASI pH — OTOMATIS 2 TITIK via CALIB_NOW
 // ============================================================
 
 /**
- * Membaca tegangan pH rata-rata dari banyak sampel (high accuracy).
- * Menggunakan 20 panggilan readPhVoltage() (masing-masing 10 ADC reads)
- * = total 200 pembacaan ADC selama ~2 detik.
- * Mengembalikan -1 jika gagal.
+ * Membaca tegangan pH ultra-akurat: 30 panggilan readPhVoltage()
+ * (masing-masing 50 ADC reads) = total 1500 pembacaan selama ~4 detik.
  */
 float readPhVoltageHighAccuracy() {
-    Serial.println("[CALIB] Membaca tegangan sensor (200 sampel, ~2 detik)...");
+    Serial.println("[CALIB] Membaca tegangan sensor (1500 sampel, ~4 detik)...");
     float totalVoltage = 0;
     int validCount = 0;
 
-    for (int i = 0; i < 20; i++) {
+    for (int i = 0; i < 30; i++) {
         float v = readPhVoltage();
         if (v >= 0) {
             totalVoltage += v;
             validCount++;
         }
-        delay(100);  // 100ms antar pembacaan
+        delay(130);
     }
 
-    if (validCount < 5) {
-        Serial.println("[CALIB] ERROR: Terlalu sedikit pembacaan valid. Pastikan sensor terhubung!");
+    if (validCount < 10) {
+        Serial.println("[CALIB] ERROR: Terlalu sedikit pembacaan valid!");
         return -1.0;
     }
 
@@ -531,107 +576,140 @@ float readPhVoltageHighAccuracy() {
 }
 
 /**
- * Kalibrasi SATU TITIK: gunakan buffer pH apapun yang diketahui.
- * Menyesuaikan OFFSET sambil mempertahankan SLOPE.
- * Akurasi baik untuk range pH 4-10 (cocok untuk akuakultur).
- *
- * Rumus:  pH = SLOPE * voltage + OFFSET
- *         OFFSET_baru = pH_diketahui - SLOPE * voltage_terukur
+ * Kalibrasi DUA TITIK otomatis via CALIB_NOW.
+ * Menghitung SLOPE dan OFFSET dari dua titik referensi apapun.
  */
-void calibrateSinglePoint(float knownPh) {
-    float avgVoltage = readPhVoltageHighAccuracy();
-    if (avgVoltage < 0) return;
+void calibrateTwoPoints(float ph1, float v1, float ph2, float v2) {
+    float voltageDiff = v2 - v1;
+    if (abs(voltageDiff) < 0.005) {
+        Serial.println("[CALIB] ERROR: Tegangan kedua buffer terlalu mirip!");
+        Serial.println("[CALIB] Sensor mungkin bermasalah. Cek koneksi kabel BNC.");
+        return;
+    }
 
-    // Hitung offset baru (slope tetap)
-    float newOffset = knownPh - (PH_SLOPE * avgVoltage);
-
-    // Terapkan kalibrasi
-    PH_OFFSET = newOffset;
+    PH_SLOPE  = (ph2 - ph1) / (v2 - v1);
+    PH_OFFSET = ph1 - (PH_SLOPE * v1);
     phCalibrated = true;
+
+    // Reset EMA filter agar langsung pakai nilai baru
+    phFilterInitialized = false;
 
     Serial.println();
     Serial.println("==============================================");
-    Serial.println("   KALIBRASI SATU TITIK BERHASIL!");
+    Serial.println("   KALIBRASI 2 TITIK BERHASIL!");
     Serial.println("==============================================");
-    Serial.print("   pH Buffer Diketahui : ");
-    Serial.println(knownPh, 2);
-    Serial.print("   Tegangan Terukur    : ");
-    Serial.print(avgVoltage, 4);
+    Serial.print("   Titik 1: pH ");
+    Serial.print(ph1, 2);
+    Serial.print(" = ");
+    Serial.print(v1, 4);
     Serial.println("V");
-    Serial.print("   Slope (tetap)       : ");
+    Serial.print("   Titik 2: pH ");
+    Serial.print(ph2, 2);
+    Serial.print(" = ");
+    Serial.print(v2, 4);
+    Serial.println("V");
+    Serial.println("   ---");
+    Serial.print("   Slope  (baru): ");
     Serial.println(PH_SLOPE, 4);
-    Serial.print("   Offset (baru)       : ");
+    Serial.print("   Offset (baru): ");
     Serial.println(PH_OFFSET, 4);
     Serial.println("==============================================");
 
-    // Verifikasi langsung
-    delay(200);
-    float verifyVoltage = readPhVoltage();
-    if (verifyVoltage >= 0) {
-        float verifyPh = PH_OFFSET + (PH_SLOPE * verifyVoltage);
-        verifyPh = constrain(verifyPh, 0.0, 14.0);
+    // Verifikasi
+    delay(300);
+    float vNow = readPhVoltage();
+    if (vNow >= 0) {
+        float phNow = PH_OFFSET + (PH_SLOPE * vNow);
+        phNow = constrain(phNow, 0.0, 14.0);
         Serial.print("   VERIFIKASI: pH terbaca = ");
-        Serial.print(verifyPh, 2);
-        Serial.print(" (target: ");
-        Serial.print(knownPh, 2);
-        Serial.println(")");
-        
-        float error = abs(verifyPh - knownPh);
-        if (error < 0.3) {
-            Serial.println("   STATUS: OK - Kalibrasi akurat!");
-        } else {
-            Serial.println("   STATUS: PERINGATAN - Selisih agak besar.");
-            Serial.println("           Coba tunggu 30 detik lalu ulangi.");
-        }
+        Serial.println(phNow, 2);
     }
     Serial.println("==============================================");
     Serial.println();
 }
 
 /**
- * Kalibrasi DUA TITIK: menggunakan buffer pH 7 dan pH 4.
- * Menghitung SLOPE dan OFFSET dari dua titik referensi.
- * Lebih akurat dari kalibrasi satu titik.
+ * Handler untuk perintah CALIB_NOW <pH>.
+ * - Panggilan PERTAMA : simpan titik 1 + lakukan kalibrasi 1 titik sementara
+ * - Panggilan KEDUA   : gunakan titik 1 + titik 2 untuk kalibrasi 2 titik penuh
  */
-void calculatePhCalibration() {
-    if (phVoltageAt7 == phVoltageAt4) {
-        Serial.println("[CALIB] Gagal: tegangan pH 7 dan pH 4 tidak boleh sama.");
-        return;
+void handleCalibNow(float knownPh) {
+    float avgVoltage = readPhVoltageHighAccuracy();
+    if (avgVoltage < 0) return;
+
+    if (!hasCalibPoint1) {
+        // ---- TITIK PERTAMA ----
+        calibPoint1Ph = knownPh;
+        calibPoint1Voltage = avgVoltage;
+        hasCalibPoint1 = true;
+
+        // Lakukan kalibrasi 1 titik sementara (offset saja)
+        PH_OFFSET = knownPh - (PH_SLOPE * avgVoltage);
+        phCalibrated = true;
+        phFilterInitialized = false; // Reset filter
+
+        Serial.println();
+        Serial.println("==============================================");
+        Serial.println("   TITIK 1 TERSIMPAN!");
+        Serial.println("==============================================");
+        Serial.print("   pH Buffer  : ");
+        Serial.println(knownPh, 2);
+        Serial.print("   Tegangan   : ");
+        Serial.print(avgVoltage, 4);
+        Serial.println("V");
+        Serial.print("   Offset     : ");
+        Serial.println(PH_OFFSET, 4);
+        Serial.println("==============================================");
+        Serial.println();
+        Serial.println("   >> LANGKAH SELANJUTNYA:");
+        Serial.println("   >> Celupkan sensor ke buffer pH LAIN");
+        Serial.println("   >> (contoh: 4.01 atau 10.01)");
+        Serial.println("   >> Tunggu 30 detik, lalu ketik:");
+        Serial.println("   >>   CALIB_NOW <pH_buffer_kedua>");
+        Serial.println();
+
+        // Verifikasi sementara
+        delay(300);
+        float vNow = readPhVoltage();
+        if (vNow >= 0) {
+            float phNow = PH_OFFSET + (PH_SLOPE * vNow);
+            phNow = constrain(phNow, 0.0, 14.0);
+            Serial.print("   [Sementara] pH terbaca = ");
+            Serial.println(phNow, 2);
+        }
+        Serial.println();
+
+    } else {
+        // ---- TITIK KEDUA ----
+        // Cek bahwa pH berbeda cukup jauh dari titik 1
+        if (abs(knownPh - calibPoint1Ph) < 1.0) {
+            Serial.println("[CALIB] ERROR: pH buffer kedua terlalu mirip dengan yang pertama!");
+            Serial.print("[CALIB] Titik 1 = pH ");
+            Serial.print(calibPoint1Ph, 2);
+            Serial.print(", Titik 2 = pH ");
+            Serial.println(knownPh, 2);
+            Serial.println("[CALIB] Gunakan buffer yang berbeda minimal 1.0 pH.");
+            return;
+        }
+
+        // Lakukan kalibrasi 2 titik penuh!
+        calibrateTwoPoints(calibPoint1Ph, calibPoint1Voltage, knownPh, avgVoltage);
+
+        // Reset state
+        hasCalibPoint1 = false;
+        calibPoint1Ph = 0;
+        calibPoint1Voltage = 0;
     }
-
-    // Rumus dua titik:
-    // slope  = (pH7 - pH4) / (V7 - V4)
-    // offset = pH7 - slope * V7
-    PH_SLOPE  = (7.0 - 4.0) / (phVoltageAt7 - phVoltageAt4);
-    PH_OFFSET = 7.0 - (PH_SLOPE * phVoltageAt7);
-    phCalibrated = true;
-
-    Serial.println();
-    Serial.println("==============================================");
-    Serial.println("   KALIBRASI DUA TITIK BERHASIL!");
-    Serial.println("==============================================");
-    Serial.print("   Tegangan pH 7 : ");
-    Serial.print(phVoltageAt7, 4);
-    Serial.println("V");
-    Serial.print("   Tegangan pH 4 : ");
-    Serial.print(phVoltageAt4, 4);
-    Serial.println("V");
-    Serial.print("   Slope (baru)  : ");
-    Serial.println(PH_SLOPE, 4);
-    Serial.print("   Offset (baru) : ");
-    Serial.println(PH_OFFSET, 4);
-    Serial.println("==============================================");
-    Serial.println();
 }
 
 void handlePhCalibrationCommand(String command) {
     command.trim();
 
-    // ---- CALIB_NOW <pH> : Kalibrasi satu titik dengan buffer apapun ----
     // Harus dicek SEBELUM toUpperCase karena parameter angka perlu utuh
     String cmdUpper = command;
     cmdUpper.toUpperCase();
 
+    // ---- CALIB_NOW <pH> ----
     if (cmdUpper.startsWith("CALIB_NOW")) {
         String param = command.substring(9);
         param.trim();
@@ -640,6 +718,10 @@ void handlePhCalibrationCommand(String command) {
             Serial.println("[CALIB] Penggunaan: CALIB_NOW <nilai_pH>");
             Serial.println("[CALIB] Contoh   : CALIB_NOW 6.86");
             Serial.println("[CALIB] Pastikan sensor sudah dicelupkan ke buffer!");
+            if (hasCalibPoint1) {
+                Serial.print("[CALIB] Titik 1 sudah tersimpan: pH ");
+                Serial.println(calibPoint1Ph, 2);
+            }
             return;
         }
 
@@ -651,52 +733,40 @@ void handlePhCalibrationCommand(String command) {
 
         Serial.print("[CALIB] Memulai kalibrasi dengan pH buffer = ");
         Serial.println(knownPh, 2);
+        if (hasCalibPoint1) {
+            Serial.print("[CALIB] Titik 1 (tersimpan): pH ");
+            Serial.print(calibPoint1Ph, 2);
+            Serial.print(" = ");
+            Serial.print(calibPoint1Voltage, 4);
+            Serial.println("V");
+            Serial.println("[CALIB] Akan melakukan kalibrasi 2 TITIK...");
+        } else {
+            Serial.println("[CALIB] Ini adalah titik PERTAMA.");
+        }
         Serial.println("[CALIB] Pastikan sensor sudah stabil di larutan buffer...");
         delay(500);
 
-        calibrateSinglePoint(knownPh);
+        handleCalibNow(knownPh);
         return;
     }
 
     // ---- Perintah lain (huruf besar semua) ----
     command = cmdUpper;
 
-    if (command == "CALIB_PH7") {
-        float voltage = readPhVoltageHighAccuracy();
-        if (voltage < 0) return;
-        phVoltageAt7 = voltage;
-        Serial.print("[CALIB] Tegangan pH 7 tercatat: ");
-        Serial.print(voltage, 4);
-        Serial.println("V");
-        if (phVoltageAt4 != 0.0) {
-            calculatePhCalibration();
-        } else {
-            Serial.println("[CALIB] Selanjutnya celupkan ke larutan pH 4 dan kirim CALIB_PH4");
-        }
-    }
-    else if (command == "CALIB_PH4") {
-        float voltage = readPhVoltageHighAccuracy();
-        if (voltage < 0) return;
-        phVoltageAt4 = voltage;
-        Serial.print("[CALIB] Tegangan pH 4 tercatat: ");
-        Serial.print(voltage, 4);
-        Serial.println("V");
-        if (phVoltageAt7 != 0.0) {
-            calculatePhCalibration();
-        } else {
-            Serial.println("[CALIB] Selanjutnya celupkan ke larutan pH 7 dan kirim CALIB_PH7");
-        }
-    }
-    else if (command == "CALIB_STATUS") {
+    if (command == "CALIB_STATUS") {
         printPhCalibrationStatus();
     }
     else if (command == "CALIB_RESET") {
         PH_SLOPE = -5.70;
         PH_OFFSET = 21.34;
         phCalibrated = false;
-        phVoltageAt7 = 0.0;
-        phVoltageAt4 = 0.0;
-        Serial.println("[CALIB] Kalibrasi direset ke nilai default.");
+        hasCalibPoint1 = false;
+        calibPoint1Ph = 0;
+        calibPoint1Voltage = 0;
+        phVoltageAt7 = 0;
+        phVoltageAt4 = 0;
+        phFilterInitialized = false;
+        Serial.println("[CALIB] Semua kalibrasi direset ke default.");
         Serial.println("[CALIB] Offset=21.34, Slope=-5.70");
     }
     else if (command == "CALIB_HELP") {
@@ -705,15 +775,12 @@ void handlePhCalibrationCommand(String command) {
         Serial.println("   PERINTAH KALIBRASI pH");
         Serial.println("==============================================");
         Serial.println();
-        Serial.println("  --- Kalibrasi 1 Titik (CEPAT) ---");
-        Serial.println("  CALIB_NOW <pH>  - Kalibrasi dengan buffer apapun");
-        Serial.println("                    Contoh: CALIB_NOW 6.86");
-        Serial.println("                    Contoh: CALIB_NOW 4.01");
-        Serial.println("                    Contoh: CALIB_NOW 9.18");
-        Serial.println();
-        Serial.println("  --- Kalibrasi 2 Titik (AKURAT) ---");
-        Serial.println("  CALIB_PH7       - Catat tegangan di buffer pH 7");
-        Serial.println("  CALIB_PH4       - Catat tegangan di buffer pH 4");
+        Serial.println("  --- Kalibrasi (Otomatis 2 Titik) ---");
+        Serial.println("  Langkah 1: Celupkan ke buffer pH pertama");
+        Serial.println("             Ketik: CALIB_NOW 6.86");
+        Serial.println("  Langkah 2: Celupkan ke buffer pH kedua");
+        Serial.println("             Ketik: CALIB_NOW 10.01");
+        Serial.println("  Sistem otomatis menghitung slope + offset!");
         Serial.println();
         Serial.println("  --- Utilitas ---");
         Serial.println("  CALIB_STATUS    - Tampilkan status kalibrasi");
@@ -729,20 +796,21 @@ void printPhCalibrationStatus() {
     Serial.println("==============================================");
     Serial.println("   STATUS KALIBRASI pH");
     Serial.println("==============================================");
-    Serial.print("   Tercalibrasi : ");
+    Serial.print("   Tercalibrasi    : ");
     Serial.println(phCalibrated ? "YA" : "BELUM (menggunakan default)");
-    Serial.print("   Slope        : ");
+    Serial.print("   Slope           : ");
     Serial.println(PH_SLOPE, 4);
-    Serial.print("   Offset       : ");
+    Serial.print("   Offset          : ");
     Serial.println(PH_OFFSET, 4);
+    Serial.print("   EMA Alpha       : ");
+    Serial.println(PH_EMA_ALPHA, 2);
 
-    if (phVoltageAt7 > 0 || phVoltageAt4 > 0) {
-        Serial.println("   --- Data Kalibrasi 2 Titik ---");
-        Serial.print("   pH 7 Voltage : ");
-        Serial.print(phVoltageAt7, 4);
-        Serial.println("V");
-        Serial.print("   pH 4 Voltage : ");
-        Serial.print(phVoltageAt4, 4);
+    if (hasCalibPoint1) {
+        Serial.println("   --- Titik 1 Tersimpan (menunggu titik 2) ---");
+        Serial.print("   pH Buffer       : ");
+        Serial.println(calibPoint1Ph, 2);
+        Serial.print("   Tegangan        : ");
+        Serial.print(calibPoint1Voltage, 4);
         Serial.println("V");
     }
 
@@ -752,11 +820,13 @@ void printPhCalibrationStatus() {
         float currentPh = PH_OFFSET + (PH_SLOPE * currentVoltage);
         currentPh = constrain(currentPh, 0.0, 14.0);
         Serial.println("   --- Pembacaan Saat Ini ---");
-        Serial.print("   Tegangan     : ");
+        Serial.print("   Tegangan        : ");
         Serial.print(currentVoltage, 4);
         Serial.println("V");
-        Serial.print("   pH Terbaca   : ");
+        Serial.print("   pH Raw          : ");
         Serial.println(currentPh, 2);
+        Serial.print("   pH Smoothed     : ");
+        Serial.println(smoothedPhValue, 2);
     }
     Serial.println("==============================================");
     Serial.println();
