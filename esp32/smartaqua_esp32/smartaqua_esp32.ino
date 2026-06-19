@@ -17,6 +17,7 @@
  *   1. ArduinoJson (by Benoit Blanchon) v7.x
  *   2. HTTPClient (built-in ESP32)
  *   3. WiFi (built-in ESP32)
+ *   4. WiFiClientSecure (built-in ESP32)
  * 
  * Konfigurasi Board Arduino IDE:
  *   Board  : ESP32 Dev Module
@@ -26,6 +27,7 @@
  */
 
 #include <WiFi.h>
+#include <WiFiClientSecure.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 #include <Arduino.h>
@@ -33,15 +35,20 @@
 // ============================================================
 // KONFIGURASI WiFi
 // ============================================================
-const char* WIFI_SSID     = "TP-Link_9B8E";        // Ganti dengan SSID WiFi
-const char* WIFI_PASSWORD = "58797044";     // Ganti dengan password WiFi
+const char* WIFI_SSID     = "ATAR ATAS";        // Ganti dengan SSID WiFi
+const char* WIFI_PASSWORD = "atar1234";     // Ganti dengan password WiFi
 
 // ============================================================
-// KONFIGURASI SERVER LARAVEL
+// KONFIGURASI SERVER LARAVEL (Cloudflare - HTTPS)
 // ============================================================
-const char* SERVER_URL = "http://192.168.0.104/smartaqua/public";
+// Domain custom sudah tidak berubah-ubah lagi
+String API_URL = "https://smartaquaculture.store";
+
 const char* DEVICE_TOKEN   = "smartaqua_pond_a_token_2026"; // Token dari DeviceTokenSeeder
 const char* POND_CODE      = "pond_a";                      // Kode kolam
+
+// WiFiClientSecure untuk koneksi HTTPS (Cloudflare)
+WiFiClientSecure secureClient;
 
 // ============================================================
 // KONFIGURASI PIN ESP32
@@ -339,11 +346,13 @@ void testServerConnection() {
     if (WiFi.status() != WL_CONNECTED) return;
 
     Serial.print("[SERVER] Menguji koneksi ke: ");
-    Serial.println(SERVER_URL);
+    Serial.println(API_URL);
+
+    secureClient.setInsecure(); // Bypass SSL cert validation (Cloudflare Tunnel)
 
     HTTPClient http;
-    String url = String(SERVER_URL) + "/api/pump-status/" + String(POND_CODE);
-    http.begin(url);
+    String url = API_URL + "/api/pump-status/" + String(POND_CODE);
+    http.begin(secureClient, url);
     http.addHeader("X-Device-Token", DEVICE_TOKEN);
     http.addHeader("Accept", "application/json");
 
@@ -597,14 +606,16 @@ void kirimDataKeServer() {
     String jsonPayload;
     serializeJson(doc, jsonPayload);
 
-    // Kirim HTTP POST
+    // Kirim HTTP POST via HTTPS
+    secureClient.setInsecure(); // Bypass SSL cert validation (Cloudflare Tunnel)
+
     HTTPClient http;
-    String url = String(SERVER_URL) + "/api/sensor-data";
-    http.begin(url);
+    String url = API_URL + "/api/sensor-data";
+    http.begin(secureClient, url);
     http.addHeader("Content-Type", "application/json");
     http.addHeader("Accept", "application/json");
     http.addHeader("X-Device-Token", DEVICE_TOKEN);
-    http.setTimeout(1500);  // Timeout 1.5 detik
+    http.setTimeout(5000);  // Timeout 5 detik (HTTPS handshake lebih lambat)
 
     Serial.print("[API] Mengirim data... ");
 

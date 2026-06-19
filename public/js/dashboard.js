@@ -114,8 +114,6 @@ const SmartAquaDashboard = (function () {
             // Water level
             animateValue('water-level-value', r.water_level);
             updateBadge('water-level-status', r.water_level, cfg.minWaterLevel, cfg.maxWaterLevel, 'level');
-            updateLevelBar('waterLevelBar', r.water_level, cfg.maxWaterLevel);
-            updateLevelBar('waterLevelBarManual', r.water_level, cfg.maxWaterLevel);
 
             // pH
             animateValue('ph-value', r.ph_value);
@@ -198,20 +196,6 @@ const SmartAquaDashboard = (function () {
         }
         el.textContent = status;
         el.className = 'sa-badge-status ' + cls;
-    }
-
-    /* ---------------------------------------------------------------
-       UPDATE WATER-LEVEL BAR (visual slider)
-    --------------------------------------------------------------- */
-    function updateLevelBar(id, value, max) {
-        var container = document.getElementById(id);
-        if (!container) return;
-
-        var pct = Math.min(100, Math.max(0, (value / max) * 100));
-        var fill = container.querySelector('.sa-level-bar-fill');
-        var thumb = container.querySelector('.sa-level-bar-thumb');
-        if (fill) fill.style.width = pct + '%';
-        if (thumb) thumb.style.left = pct + '%';
     }
 
     /* ---------------------------------------------------------------

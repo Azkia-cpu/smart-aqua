@@ -79,19 +79,6 @@
                 <span class="sa-pump-status-value" id="pump-auto-volume">-- L</span>
             </div>
 
-            <div class="sa-level-section">
-                <span class="sa-pump-status-label">Posisi Ketinggian Air</span>
-                <div class="sa-level-bar-container" id="waterLevelBar">
-                    <div class="sa-level-bar">
-                        <div class="sa-level-bar-fill" style="width: 0%;"></div>
-                        <div class="sa-level-bar-thumb" style="left: 0%;"></div>
-                    </div>
-                    <div class="sa-level-labels">
-                        <span>0 cm</span>
-                        <span>{{ $currentPond->max_water_level ?? 12 }} cm</span>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 </div>
@@ -140,20 +127,6 @@
             <div class="sa-pump-info-row mb-3">
                 <span class="sa-pump-status-label">VOLUME HARI INI</span>
                 <span class="sa-pump-status-value" id="pump-manual-volume">-- L</span>
-            </div>
-
-            <div class="sa-level-section mb-3">
-                <span class="sa-pump-status-label">Posisi Ketinggian Air</span>
-                <div class="sa-level-bar-container" id="waterLevelBarManual">
-                    <div class="sa-level-bar">
-                        <div class="sa-level-bar-fill" style="width: 0%;"></div>
-                        <div class="sa-level-bar-thumb" style="left: 0%;"></div>
-                    </div>
-                    <div class="sa-level-labels">
-                        <span>0 cm</span>
-                        <span>{{ $currentPond->max_water_level ?? 12 }} cm</span>
-                    </div>
-                </div>
             </div>
 
             {{-- Manual ON/OFF Buttons --}}
