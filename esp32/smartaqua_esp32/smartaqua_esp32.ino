@@ -195,6 +195,12 @@ void httpTask(void *pvParameters) {
 }
 
 // ============================================================
+// FORWARD DECLARATIONS (supaya bisa dipanggil sebelum didefinisikan)
+// ============================================================
+float readPhVoltage();
+void handlePhCalibrationCommand(String command);
+
+// ============================================================
 // SETUP
 // ============================================================
 void setup() {
@@ -428,10 +434,6 @@ void bacaSensorLevel() {
     Serial.print(currentDistanceCm);
     Serial.println(" cm)");
 }
-
-// Forward declarations untuk kalibrasi pH
-float readPhVoltage();
-void handlePhCalibrationCommand(String command);
 
 // ============================================================
 // BACA SENSOR pH
