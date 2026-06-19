@@ -47,9 +47,6 @@ String API_URL = "https://smartaquaculture.store";
 const char* DEVICE_TOKEN   = "smartaqua_pond_a_token_2026"; // Token dari DeviceTokenSeeder
 const char* POND_CODE      = "pond_a";                      // Kode kolam
 
-// WiFiClientSecure untuk koneksi HTTPS (Cloudflare)
-WiFiClientSecure secureClient;
-
 // ============================================================
 // KONFIGURASI PIN ESP32
 // ============================================================
@@ -111,7 +108,7 @@ float  phVoltageAt4    = 0.0;
 // ============================================================
 // INTERVAL WAKTU (millis)
 // ============================================================
-#define SEND_INTERVAL       2000    // Kirim data setiap 2 detik
+#define SEND_INTERVAL       3000    // Kirim data setiap 3 detik (beri waktu cukup untuk HTTPS)
 #define PUMP_CHECK_INTERVAL 2000    // Cek status pompa setiap 2 detik
 #define LED_UPDATE_INTERVAL 1000    // Update LED setiap 1 detik
 #define WIFI_CHECK_INTERVAL 30000   // Cek WiFi setiap 30 detik
@@ -366,13 +363,18 @@ void testServerConnection() {
     Serial.print("[SERVER] Menguji koneksi ke: ");
     Serial.println(API_URL);
 
-    secureClient.setInsecure(); // Bypass SSL cert validation (Cloudflare Tunnel)
+    WiFiClientSecure *client = new WiFiClientSecure();
+    client->setInsecure(); // Bypass SSL cert validation (Cloudflare)
+    client->setTimeout(15); // 15 detik timeout untuk TLS handshake
 
     HTTPClient http;
     String url = API_URL + "/api/pump-status/" + String(POND_CODE);
-    http.begin(secureClient, url);
+    http.begin(*client, url);
     http.addHeader("X-Device-Token", DEVICE_TOKEN);
     http.addHeader("Accept", "application/json");
+    http.addHeader("User-Agent", "ESP32-SmartAqua/1.0");
+    http.addHeader("Connection", "close");
+    http.setTimeout(15000); // 15 detik timeout HTTP
 
     int httpCode = http.GET();
     if (httpCode == 200) {
@@ -383,7 +385,9 @@ void testServerConnection() {
         Serial.println(httpCode);
         serverConnected = false;
     }
+
     http.end();
+    delete client;
 }
 
 // ============================================================
@@ -719,18 +723,26 @@ void kirimDataKeServer() {
     String jsonPayload;
     serializeJson(doc, jsonPayload);
 
-    // Kirim HTTP POST via HTTPS
-    secureClient.setInsecure(); // Bypass SSL cert validation (Cloudflare Tunnel)
+    Serial.print("[API] Mengirim data (pH=");
+    Serial.print(currentPhValue);
+    Serial.print(", level=");
+    Serial.print(currentWaterLevel);
+    Serial.print(")... ");
+
+    // Kirim HTTP POST via HTTPS dengan client baru tiap request
+    WiFiClientSecure *client = new WiFiClientSecure();
+    client->setInsecure();   // Bypass SSL cert validation (Cloudflare)
+    client->setTimeout(10);  // 10 detik timeout level TLS/socket
 
     HTTPClient http;
     String url = API_URL + "/api/sensor-data";
-    http.begin(secureClient, url);
+    http.begin(*client, url);
     http.addHeader("Content-Type", "application/json");
     http.addHeader("Accept", "application/json");
     http.addHeader("X-Device-Token", DEVICE_TOKEN);
-    http.setTimeout(5000);  // Timeout 5 detik (HTTPS handshake lebih lambat)
-
-    Serial.print("[API] Mengirim data... ");
+    http.addHeader("User-Agent", "ESP32-SmartAqua/1.0");  // Cloudflare memerlukan User-Agent
+    http.addHeader("Connection", "close");                 // Tutup koneksi setelah selesai
+    http.setTimeout(10000);  // 10 detik timeout HTTP (TLS handshake + server processing)
 
     int httpCode = http.POST(jsonPayload);
 
@@ -755,6 +767,7 @@ void kirimDataKeServer() {
     }
 
     http.end();
+    delete client;
 
     // Jika terlalu banyak gagal, coba reconnect WiFi
     if (failedRequests >= MAX_FAILED_REQUESTS) {

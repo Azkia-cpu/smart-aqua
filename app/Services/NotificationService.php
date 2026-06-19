@@ -49,50 +49,88 @@ class NotificationService
 
     /**
      * Check pH level and create appropriate notifications.
+     *
+     * Uses a cooldown to prevent spamming notifications (and slow emails)
+     * on every sensor reading, which was causing ESP32 HTTP timeouts.
      */
     public function checkPhLevel(Pond $pond, float $phValue): void
     {
         if ($phValue < 6.5) {
-            $this->createNotification(
+            $this->createNotificationWithCooldown(
                 pond: $pond,
                 type: 'danger',
                 title: 'pH Terlalu Rendah',
                 message: "Nilai pH ({$phValue}) berada di bawah batas aman (6.5). Segera periksa kondisi air kolam {$pond->name}.",
+                cooldownKey: "ph_low_{$pond->id}",
             );
 
             return;
         }
 
         if ($phValue > 8.5) {
-            $this->createNotification(
+            $this->createNotificationWithCooldown(
                 pond: $pond,
                 type: 'danger',
                 title: 'pH Terlalu Tinggi',
                 message: "Nilai pH ({$phValue}) berada di atas batas aman (8.5). Segera periksa kondisi air kolam {$pond->name}.",
+                cooldownKey: "ph_high_{$pond->id}",
             );
 
             return;
         }
 
         if ($phValue >= 6.5 && $phValue < 7.0) {
-            $this->createNotification(
+            $this->createNotificationWithCooldown(
                 pond: $pond,
                 type: 'warning',
                 title: 'pH Mendekati Batas Bawah',
                 message: "Nilai pH ({$phValue}) mendekati batas bawah aman. Pantau kolam {$pond->name} secara berkala.",
+                cooldownKey: "ph_warn_low_{$pond->id}",
             );
 
             return;
         }
 
         if ($phValue > 8.0 && $phValue <= 8.5) {
-            $this->createNotification(
+            $this->createNotificationWithCooldown(
                 pond: $pond,
                 type: 'warning',
                 title: 'pH Mendekati Batas Atas',
                 message: "Nilai pH ({$phValue}) mendekati batas atas aman. Pantau kolam {$pond->name} secara berkala.",
+                cooldownKey: "ph_warn_high_{$pond->id}",
             );
         }
+    }
+
+    /**
+     * Create a notification only if no similar notification exists within the cooldown period.
+     * This prevents the server from spamming emails on every 2-second sensor reading,
+     * which was blocking HTTP responses and causing ESP32 timeouts.
+     */
+    protected function createNotificationWithCooldown(
+        Pond $pond,
+        string $type,
+        string $title,
+        string $message,
+        string $cooldownKey,
+        int $cooldownMinutes = 5,
+    ): void {
+        // Check if a similar notification was created recently
+        $recentExists = $pond->notifications()
+            ->where('title', $title)
+            ->where('created_at', '>=', now()->subMinutes($cooldownMinutes))
+            ->exists();
+
+        if ($recentExists) {
+            return; // Skip — still within cooldown period
+        }
+
+        $this->createNotification(
+            pond: $pond,
+            type: $type,
+            title: $title,
+            message: $message,
+        );
     }
 
     /**
