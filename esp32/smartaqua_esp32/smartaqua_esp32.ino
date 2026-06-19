@@ -89,14 +89,19 @@ float MAX_WATER_LEVEL = 9.0;  // Pompa OFF di atas ini
 #define MIN_PH            6.5
 #define MAX_PH            8.5
 
-// Kalibrasi pH Sensor (sesuaikan dengan kalibrasi Anda)
+// Kalibrasi pH Sensor (dapat diubah saat runtime via Serial Monitor)
 // Rumus: pH = PH_SLOPE * voltage + PH_OFFSET
 // Default untuk modul pH-4502C:
 //   pH 7.0 = ~2.5V (tengah)
 //   pH 4.0 = ~3.04V
 //   Slope ≈ -5.7
-#define PH_OFFSET         21.34
-#define PH_SLOPE          -5.70
+float PH_OFFSET = 21.34;
+float PH_SLOPE  = -5.70;
+
+// Status kalibrasi dua titik (pH 7 dan pH 4)
+bool   phCalibrated    = false;
+float  phVoltageAt7    = 0.0;
+float  phVoltageAt4    = 0.0;
 
 // Kalibrasi Flow Sensor (YF-S201)
 // Pulse per liter: 450 (dari datasheet)
@@ -226,6 +231,7 @@ void setup() {
     );
 
     Serial.println("[SETUP] Sistem siap beroperasi.");
+    Serial.println("[SETUP] Kirim CALIB_HELP ke Serial Monitor untuk bantuan kalibrasi pH.");
     Serial.println();
 }
 
@@ -244,7 +250,13 @@ void loop() {
         updateLedIndikator();
     }
 
-    // 2. Kontrol pompa berdasarkan mode
+    // 2. Tangani perintah kalibrasi pH dari Serial Monitor
+    if (Serial.available()) {
+        String command = Serial.readStringUntil('\n');
+        handlePhCalibrationCommand(command);
+    }
+
+    // 3. Kontrol pompa berdasarkan mode
     kontrolPompa();
 
     // Delay kecil untuk mencegah watchdog timer reset
@@ -417,11 +429,39 @@ void bacaSensorLevel() {
     Serial.println(" cm)");
 }
 
+// Forward declarations untuk kalibrasi pH
+float readPhVoltage();
+void handlePhCalibrationCommand(String command);
+
 // ============================================================
 // BACA SENSOR pH
 // ============================================================
 void bacaSensorPH() {
-    // Ambil rata-rata dari 10 pembacaan untuk stabilitas
+    float voltage = readPhVoltage();
+    if (voltage < 0) return;
+
+    // Konversi tegangan ke nilai pH menggunakan kalibrasi
+    float phValue = PH_OFFSET + (PH_SLOPE * voltage);
+
+    // Clamp ke range pH valid (0-14)
+    if (phValue < 0) phValue = 0;
+    if (phValue > 14) phValue = 14;
+
+    // Bulatkan ke 1 desimal
+    currentPhValue = round(phValue * 10.0) / 10.0;
+
+    Serial.print("[SENSOR] pH: ");
+    Serial.print(currentPhValue);
+    Serial.print(" (V: ");
+    Serial.print(voltage, 3);
+    Serial.println("V)");
+}
+
+// ============================================================
+// BACA TEGANGAN pH SENSOR (rata-rata 10 sampel)
+// Mengembalikan tegangan dalam Volt, atau -1 jika sensor error
+// ============================================================
+float readPhVoltage() {
     long totalAdc = 0;
     int validReadings = 0;
 
@@ -436,31 +476,102 @@ void bacaSensorPH() {
 
     if (validReadings == 0) {
         Serial.println("[SENSOR] pH sensor error! Tidak ada pembacaan valid.");
-        return;
+        return -1.0;
     }
 
     float avgAdc = (float)totalAdc / validReadings;
-
-    // Konversi ADC ke tegangan (ESP32: 12-bit ADC, 0-3.3V)
     float voltage = avgAdc * (3.3 / 4095.0);
+    return voltage;
+}
 
-    // Konversi tegangan ke nilai pH menggunakan kalibrasi
-    float phValue = PH_OFFSET + (PH_SLOPE * voltage);
+// ============================================================
+// KALIBRASI pH DUA TITIK (pH 7 dan pH 4)
+// ============================================================
+void calculatePhCalibration() {
+    if (phVoltageAt7 == phVoltageAt4) {
+        Serial.println("[CALIB] Gagal: tegangan pH 7 dan pH 4 tidak boleh sama.");
+        return;
+    }
 
-    // Clamp ke range pH valid (0-14)
-    if (phValue < 0) phValue = 0;
-    if (phValue > 14) phValue = 14;
+    // Rumus dua titik:
+    // slope  = (pH7 - pH4) / (V7 - V4)
+    // offset = pH7 - slope * V7
+    PH_SLOPE  = (7.0 - 4.0) / (phVoltageAt7 - phVoltageAt4);
+    PH_OFFSET = 7.0 - (PH_SLOPE * phVoltageAt7);
+    phCalibrated = true;
 
-    // Bulatkan ke 1 desimal
-    currentPhValue = round(phValue * 10.0) / 10.0;
+    Serial.println("[CALIB] Kalibrasi berhasil disimpan!");
+    Serial.print("[CALIB] Slope : ");
+    Serial.println(PH_SLOPE, 4);
+    Serial.print("[CALIB] Offset: ");
+    Serial.println(PH_OFFSET, 4);
+}
 
-    Serial.print("[SENSOR] pH: ");
-    Serial.print(currentPhValue);
-    Serial.print(" (ADC: ");
-    Serial.print(avgAdc, 0);
-    Serial.print(", V: ");
-    Serial.print(voltage, 2);
-    Serial.println("V)");
+void handlePhCalibrationCommand(String command) {
+    command.trim();
+    command.toUpperCase();
+
+    if (command == "CALIB_PH7") {
+        float voltage = readPhVoltage();
+        if (voltage < 0) return;
+        phVoltageAt7 = voltage;
+        Serial.print("[CALIB] Tegangan pH 7 tercatat: ");
+        Serial.print(voltage, 3);
+        Serial.println("V");
+        if (phVoltageAt4 != 0.0) {
+            calculatePhCalibration();
+        } else {
+            Serial.println("[CALIB] Selanjutnya celupkan ke larutan pH 4 dan kirim CALIB_PH4");
+        }
+    }
+    else if (command == "CALIB_PH4") {
+        float voltage = readPhVoltage();
+        if (voltage < 0) return;
+        phVoltageAt4 = voltage;
+        Serial.print("[CALIB] Tegangan pH 4 tercatat: ");
+        Serial.print(voltage, 3);
+        Serial.println("V");
+        if (phVoltageAt7 != 0.0) {
+            calculatePhCalibration();
+        } else {
+            Serial.println("[CALIB] Selanjutnya celupkan ke larutan pH 7 dan kirim CALIB_PH7");
+        }
+    }
+    else if (command == "CALIB_STATUS") {
+        printPhCalibrationStatus();
+    }
+    else if (command == "CALIB_RESET") {
+        PH_SLOPE = -5.70;
+        PH_OFFSET = 21.34;
+        phCalibrated = false;
+        phVoltageAt7 = 0.0;
+        phVoltageAt4 = 0.0;
+        Serial.println("[CALIB] Kalibrasi direset ke nilai default.");
+    }
+    else if (command == "CALIB_HELP") {
+        Serial.println("[CALIB] Perintah kalibrasi pH:");
+        Serial.println("  CALIB_PH7    - Catat tegangan saat sensor di larutan pH 7");
+        Serial.println("  CALIB_PH4    - Catat tegangan saat sensor di larutan pH 4");
+        Serial.println("  CALIB_STATUS - Tampilkan status kalibrasi");
+        Serial.println("  CALIB_RESET  - Reset ke nilai default");
+        Serial.println("  CALIB_HELP   - Tampilkan bantuan ini");
+    }
+}
+
+void printPhCalibrationStatus() {
+    Serial.println("[CALIB] Status Kalibrasi pH:");
+    Serial.print("  pH 7 Voltage: ");
+    Serial.print(phVoltageAt7, 3);
+    Serial.println("V");
+    Serial.print("  pH 4 Voltage: ");
+    Serial.print(phVoltageAt4, 3);
+    Serial.println("V");
+    Serial.print("  Slope       : ");
+    Serial.println(PH_SLOPE, 4);
+    Serial.print("  Offset      : ");
+    Serial.println(PH_OFFSET, 4);
+    Serial.print("  Tercalibrasi: ");
+    Serial.println(phCalibrated ? "YA" : "BELUM");
 }
 
 // ============================================================
@@ -717,26 +828,37 @@ void startupBlink() {
 // CATATAN KALIBRASI SENSOR pH
 // ============================================================
 /*
- * PROSEDUR KALIBRASI pH SENSOR:
- * 
- * 1. Siapkan larutan buffer pH 4.0 dan pH 7.0
- * 
- * 2. Celupkan sensor ke larutan pH 7.0
- *    - Baca nilai ADC yang muncul di Serial Monitor
- *    - Catat: adc_7 = ???, voltage_7 = ???
- * 
- * 3. Celupkan sensor ke larutan pH 4.0
- *    - Baca nilai ADC yang muncul di Serial Monitor
- *    - Catat: adc_4 = ???, voltage_4 = ???
- * 
- * 4. Hitung slope dan offset:
- *    PH_SLOPE  = (7.0 - 4.0) / (voltage_7 - voltage_4)
- *    PH_OFFSET = 7.0 - (PH_SLOPE * voltage_7)
- * 
- * 5. Update nilai PH_SLOPE dan PH_OFFSET di bagian konfigurasi
- * 
+ * PROSEDUR KALIBRASI pH SENSOR (MODE INTERAKTIF):
+ *
+ * Sistem sudah menyediakan perintah kalibrasi via Serial Monitor.
+ * Tidak perlu menghitung slope/offset manual lagi.
+ *
+ * 1. Siapkan larutan buffer pH 7.0 dan pH 4.0.
+ *
+ * 2. Celupkan sensor ke larutan pH 7.0, tunggu stabil (10-20 detik),
+ *    lalu ketik di Serial Monitor: CALIB_PH7
+ *
+ * 3. Bilas sensor dengan air RO/aquades, lalu celupkan ke larutan pH 4.0.
+ *    Tunggu stabil, lalu ketik: CALIB_PH4
+ *
+ * 4. Sistem otomatis menghitung dan menyimpan slope & offset.
+ *    Cek status dengan: CALIB_STATUS
+ *
+ * 5. Jika ingin mengulang dari awal: CALIB_RESET
+ *
+ * Perintah yang tersedia:
+ *   CALIB_PH7    - Catat tegangan saat sensor di larutan pH 7
+ *   CALIB_PH4    - Catat tegangan saat sensor di larutan pH 4
+ *   CALIB_STATUS - Tampilkan status kalibrasi terakhir
+ *   CALIB_RESET  - Reset ke nilai default
+ *   CALIB_HELP   - Tampilkan daftar perintah
+ *
+ * Rumus kalibrasi dua titik:
+ *   PH_SLOPE  = (7.0 - 4.0) / (voltage_pH7 - voltage_pH4)
+ *   PH_OFFSET = 7.0 - (PH_SLOPE * voltage_pH7)
+ *
  * Contoh:
- *   voltage_7 = 2.52V, voltage_4 = 3.04V
+ *   voltage_pH7 = 2.52V, voltage_pH4 = 3.04V
  *   PH_SLOPE  = (7.0 - 4.0) / (2.52 - 3.04) = -5.77
  *   PH_OFFSET = 7.0 - (-5.77 * 2.52) = 21.54
  */
