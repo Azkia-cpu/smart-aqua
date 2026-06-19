@@ -11,8 +11,26 @@ const SmartAquaPump = (function () {
     function init() {
         if (!window.SmartAqua || !window.SmartAqua.currentPond) return;
 
-        // Manual mode toggle
+        var autoToggle = document.getElementById('pumpAutoToggle');
         var manualToggle = document.getElementById('pumpManualToggle');
+
+        // Automatic mode toggle
+        if (autoToggle) {
+            autoToggle.addEventListener('change', function () {
+                var action = this.checked ? 'toggle_manual_off' : 'toggle_manual_on';
+                var msg = this.checked
+                    ? 'Aktifkan mode pompa otomatis?'
+                    : 'Matikan mode pompa otomatis dan beralih ke mode manual?';
+
+                if (confirm(msg)) {
+                    sendPumpCommand(action);
+                } else {
+                    this.checked = !this.checked;
+                }
+            });
+        }
+
+        // Manual mode toggle
         if (manualToggle) {
             manualToggle.addEventListener('change', function () {
                 var action = this.checked ? 'toggle_manual_on' : 'toggle_manual_off';

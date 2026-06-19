@@ -62,7 +62,7 @@
             <div class="d-flex align-items-center justify-content-between mb-3">
                 <h2 class="sa-card-title mb-0">POMPA OTOMATIS</h2>
                 <label class="sa-toggle">
-                    <input type="checkbox" id="pumpAutoToggle" checked disabled>
+                    <input type="checkbox" id="pumpAutoToggle">
                     <span class="slider"></span>
                 </label>
             </div>

@@ -129,7 +129,11 @@ const SmartAquaDashboard = (function () {
                 autoStatusEl.className = 'sa-pump-status-value ' + (isAutoOn ? 'on' : 'off');
             }
 
-            // Pump auto label
+            // Pump auto toggle + label
+            var autoToggle = document.getElementById('pumpAutoToggle');
+            if (autoToggle) {
+                autoToggle.checked = !p.is_manual_mode;
+            }
             var autoLabel = document.getElementById('pumpAutoLabel');
             if (autoLabel) {
                 autoLabel.textContent = !p.is_manual_mode ? 'AKTIF' : 'NONAKTIF';
