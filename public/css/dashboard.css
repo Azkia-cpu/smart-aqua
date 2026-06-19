@@ -1,0 +1,1050 @@
+/* ================================================================
+   SmartAqua Dashboard — Complete Stylesheet
+   Supports light & dark themes via [data-theme] on <html>
+   ================================================================ */
+
+/* ----------------------------------------------------------------
+   1. CSS CUSTOM PROPERTIES (Theme Tokens)
+   ---------------------------------------------------------------- */
+:root,
+[data-theme="light"] {
+    --sa-bg: #eef1f5;
+    --sa-card-bg: #ffffff;
+    --sa-card-border: rgba(0, 0, 0, 0.06);
+    --sa-text-primary: #1a1a2e;
+    --sa-text-secondary: #6c757d;
+    --sa-text-muted: #adb5bd;
+    --sa-navbar-bg: #ffffff;
+    --sa-navbar-text: #1a1a2e;
+    --sa-table-header-bg: #f8f9fa;
+    --sa-input-bg: #f0f2f5;
+    --sa-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+    --sa-chart-grid: rgba(0, 0, 0, 0.06);
+    --sa-chart-text: #6c757d;
+    --sa-divider: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="dark"] {
+    --sa-bg: #0d1b2a;
+    --sa-card-bg: #1b263b;
+    --sa-card-border: rgba(255, 255, 255, 0.06);
+    --sa-text-primary: #ffffff;
+    --sa-text-secondary: #a0aec0;
+    --sa-text-muted: #596880;
+    --sa-navbar-bg: #152238;
+    --sa-navbar-text: #ffffff;
+    --sa-table-header-bg: #1e3050;
+    --sa-input-bg: #253a54;
+    --sa-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+    --sa-chart-grid: rgba(255, 255, 255, 0.06);
+    --sa-chart-text: #a0aec0;
+    --sa-divider: rgba(255, 255, 255, 0.06);
+}
+
+/* Accent colors — shared across themes */
+:root {
+    --sa-primary: #00b4d8;
+    --sa-success: #06d6a0;
+    --sa-warning: #ffd166;
+    --sa-danger: #ef476f;
+    --sa-info: #48cae4;
+}
+
+/* ----------------------------------------------------------------
+   2. BASE / RESET
+   ---------------------------------------------------------------- */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+body.dashboard-body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: var(--sa-bg);
+    color: var(--sa-text-primary);
+    min-height: 100vh;
+    margin: 0;
+    padding: 0;
+    transition: background-color 0.3s ease, color 0.3s ease;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* ----------------------------------------------------------------
+   3. CUSTOM SCROLLBAR
+   ---------------------------------------------------------------- */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--sa-text-muted);
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--sa-text-secondary);
+}
+
+/* ----------------------------------------------------------------
+   4. NAVBAR
+   ---------------------------------------------------------------- */
+.sa-navbar {
+    height: 60px;
+    background: var(--sa-navbar-bg);
+    display: flex;
+    align-items: center;
+    padding: 0 1.5rem;
+    border-bottom: 1px solid var(--sa-card-border);
+    box-shadow: var(--sa-shadow);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.sa-navbar-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+}
+
+/* Brand */
+.sa-navbar-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-shrink: 0;
+}
+
+.sa-brand-logo {
+    width: 36px;
+    height: 36px;
+    background: var(--sa-success);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.75rem;
+    letter-spacing: -0.5px;
+    flex-shrink: 0;
+}
+
+.sa-brand-text {
+    display: flex;
+    flex-direction: column;
+}
+
+.sa-brand-title {
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: var(--sa-navbar-text);
+    letter-spacing: 0.5px;
+    line-height: 1.2;
+}
+
+.sa-brand-subtitle {
+    font-size: 0.65rem;
+    color: var(--sa-text-secondary);
+    letter-spacing: 0.3px;
+    display: block;
+    line-height: 1.3;
+}
+
+/* Center tabs */
+.sa-navbar-center {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+}
+
+.sa-tab-group {
+    display: flex;
+    gap: 0;
+    background: var(--sa-input-bg);
+    border-radius: 8px;
+    padding: 2px;
+    overflow: hidden;
+}
+
+.sa-tab {
+    padding: 0.4rem 1.2rem;
+    border: none;
+    background: none;
+    color: var(--sa-text-secondary);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.sa-tab:hover {
+    color: var(--sa-text-primary);
+}
+
+.sa-tab.active {
+    background: var(--sa-card-bg);
+    color: var(--sa-text-primary);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Right section */
+.sa-navbar-right {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-shrink: 0;
+}
+
+.sa-datetime {
+    color: var(--sa-text-secondary);
+    font-size: 0.8rem;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.sa-theme-toggle {
+    background: none;
+    border: none;
+    color: var(--sa-text-secondary);
+    font-size: 1.1rem;
+    padding: 0.4rem;
+    cursor: pointer;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+}
+
+.sa-theme-toggle:hover {
+    color: var(--sa-warning);
+    background: var(--sa-input-bg);
+}
+
+.sa-nav-icon {
+    background: none;
+    border: none;
+    color: var(--sa-text-secondary);
+    font-size: 1.1rem;
+    padding: 0.4rem;
+    cursor: pointer;
+    position: relative;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+}
+
+.sa-nav-icon:hover {
+    color: var(--sa-text-primary);
+    background: var(--sa-input-bg);
+}
+
+.sa-user-icon {
+    background: var(--sa-input-bg);
+}
+
+.sa-badge-count {
+    position: absolute;
+    top: 0;
+    right: 0;
+    background: var(--sa-danger);
+    color: #fff;
+    font-size: 0.6rem;
+    font-weight: 700;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+/* Dropdown Menu */
+.sa-dropdown-menu {
+    background: var(--sa-card-bg);
+    border: 1px solid var(--sa-card-border);
+    border-radius: 10px;
+    box-shadow: var(--sa-shadow);
+    padding: 0.5rem;
+    min-width: 180px;
+}
+
+.sa-dropdown-menu .dropdown-item {
+    color: var(--sa-text-primary);
+    border-radius: 6px;
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+    transition: background 0.15s ease;
+}
+
+.sa-dropdown-menu .dropdown-item:hover,
+.sa-dropdown-menu .dropdown-item:focus {
+    background: var(--sa-input-bg);
+    color: var(--sa-text-primary);
+}
+
+.sa-dropdown-menu .dropdown-item.active {
+    background: var(--sa-primary);
+    color: #fff;
+}
+
+.sa-dropdown-menu .dropdown-divider {
+    border-color: var(--sa-card-border);
+}
+
+.sa-dropdown-username {
+    color: var(--sa-text-secondary);
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+/* ----------------------------------------------------------------
+   5. MAIN CONTENT
+   ---------------------------------------------------------------- */
+.sa-main {
+    min-height: calc(100vh - 60px);
+}
+
+/* ----------------------------------------------------------------
+   6. CARDS
+   ---------------------------------------------------------------- */
+.sa-card {
+    background: var(--sa-card-bg);
+    border-radius: 14px;
+    padding: 1.5rem;
+    border: 1px solid var(--sa-card-border);
+    box-shadow: var(--sa-shadow);
+    transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+    height: 100%;
+}
+
+.sa-card-title {
+    font-weight: 700;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--sa-text-primary);
+    margin-bottom: 1rem;
+}
+
+/* ----------------------------------------------------------------
+   7. METRIC CARDS (Level Air, pH Air)
+   ---------------------------------------------------------------- */
+.sa-metric-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.sa-metric-icon.water {
+    background: rgba(0, 120, 215, 0.15);
+    color: #0078d7;
+}
+
+.sa-metric-icon.ph {
+    background: rgba(0, 180, 136, 0.15);
+    color: #00b488;
+}
+
+.sa-ph-text {
+    font-weight: 800;
+    font-size: 1.1rem;
+    letter-spacing: -0.5px;
+}
+
+.sa-metric-value {
+    font-size: 3.5rem;
+    font-weight: 800;
+    color: var(--sa-text-primary);
+    line-height: 1;
+    transition: color 0.3s ease;
+}
+
+.sa-metric-unit {
+    font-size: 1.2rem;
+    font-weight: 400;
+    color: var(--sa-text-secondary);
+    margin-left: 0.25rem;
+    padding-bottom: 0.5rem;
+}
+
+/* Badge status */
+.sa-badge-status {
+    padding: 0.3rem 1rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: inline-block;
+    letter-spacing: 0.3px;
+}
+
+.sa-badge-status.normal {
+    background: rgba(6, 214, 160, 0.15);
+    color: #06d6a0;
+}
+
+.sa-badge-status.warning {
+    background: rgba(255, 209, 102, 0.15);
+    color: #ffd166;
+}
+
+.sa-badge-status.danger {
+    background: rgba(239, 71, 111, 0.15);
+    color: #ef476f;
+}
+
+/* Threshold info text */
+.sa-threshold-info {
+    font-size: 0.75rem;
+    color: var(--sa-text-muted);
+    margin-top: 1rem;
+    line-height: 1.7;
+}
+
+.sa-threshold-info strong {
+    color: var(--sa-text-secondary);
+}
+
+/* Pulse animation for value changes */
+.sa-pulse {
+    animation: saPulse 0.6s ease;
+}
+
+@keyframes saPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+/* ----------------------------------------------------------------
+   8. TOGGLE SWITCH
+   ---------------------------------------------------------------- */
+.sa-toggle {
+    position: relative;
+    display: inline-block;
+    width: 48px;
+    height: 26px;
+    flex-shrink: 0;
+}
+
+.sa-toggle input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+    position: absolute;
+}
+
+.sa-toggle .slider {
+    position: absolute;
+    inset: 0;
+    background: #5a6577;
+    border-radius: 26px;
+    cursor: pointer;
+    transition: background 0.3s ease;
+}
+
+.sa-toggle .slider::before {
+    content: '';
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #fff;
+    left: 3px;
+    bottom: 3px;
+    transition: transform 0.3s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.sa-toggle input:checked + .slider {
+    background: var(--sa-success);
+}
+
+.sa-toggle input:checked + .slider::before {
+    transform: translateX(22px);
+}
+
+/* Danger variant */
+.sa-toggle.danger input:checked + .slider {
+    background: var(--sa-danger);
+}
+
+/* Toggle label */
+.sa-toggle-label-row {
+    display: flex;
+    align-items: center;
+}
+
+.sa-toggle-label-text {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--sa-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+/* ----------------------------------------------------------------
+   9. PUMP CARD
+   ---------------------------------------------------------------- */
+.sa-card-pump {
+    display: flex;
+    flex-direction: column;
+}
+
+.sa-pump-info-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.sa-pump-status-label {
+    font-size: 0.8rem;
+    color: var(--sa-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    font-weight: 500;
+}
+
+.sa-pump-status-value {
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--sa-text-primary);
+    transition: color 0.3s ease;
+}
+
+.sa-pump-status-value.on {
+    color: var(--sa-success);
+}
+
+.sa-pump-status-value.off {
+    color: var(--sa-danger);
+}
+
+/* ----------------------------------------------------------------
+   10. WATER LEVEL BAR (Visual slider)
+   ---------------------------------------------------------------- */
+.sa-level-section {
+    margin-top: auto;
+}
+
+.sa-level-bar-container {
+    margin-top: 0.75rem;
+}
+
+.sa-level-bar {
+    height: 8px;
+    background: var(--sa-input-bg);
+    border-radius: 4px;
+    position: relative;
+    overflow: visible;
+}
+
+.sa-level-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--sa-success), var(--sa-primary));
+    border-radius: 4px;
+    transition: width 0.5s ease;
+}
+
+.sa-level-bar-thumb {
+    width: 16px;
+    height: 16px;
+    background: var(--sa-primary);
+    border: 3px solid #fff;
+    border-radius: 50%;
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    transition: left 0.5s ease;
+}
+
+[data-theme="dark"] .sa-level-bar-thumb {
+    border-color: var(--sa-card-bg);
+}
+
+.sa-level-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: var(--sa-text-muted);
+    margin-top: 0.25rem;
+}
+
+/* Manual buttons */
+.sa-manual-buttons {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+
+.sa-btn-pump-on {
+    flex: 1;
+    background: var(--sa-success);
+    color: #fff;
+    border: none;
+    padding: 0.6rem 1rem;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.8rem;
+    transition: opacity 0.2s ease, transform 0.1s ease;
+}
+
+.sa-btn-pump-on:hover {
+    opacity: 0.85;
+    color: #fff;
+}
+
+.sa-btn-pump-on:active {
+    transform: scale(0.97);
+}
+
+.sa-btn-pump-off {
+    flex: 1;
+    background: var(--sa-danger);
+    color: #fff;
+    border: none;
+    padding: 0.6rem 1rem;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.8rem;
+    transition: opacity 0.2s ease, transform 0.1s ease;
+}
+
+.sa-btn-pump-off:hover {
+    opacity: 0.85;
+    color: #fff;
+}
+
+.sa-btn-pump-off:active {
+    transform: scale(0.97);
+}
+
+/* ----------------------------------------------------------------
+   11. CHARTS
+   ---------------------------------------------------------------- */
+.sa-chart-container {
+    position: relative;
+    height: 220px;
+}
+
+.sa-chart-container canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* ----------------------------------------------------------------
+   12. NOTIFICATIONS
+   ---------------------------------------------------------------- */
+.sa-notification-list {
+    max-height: 300px;
+    overflow-y: auto;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.sa-notification-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--sa-card-border);
+    transition: background 0.15s ease;
+}
+
+.sa-notification-item:last-child {
+    border-bottom: none;
+}
+
+.sa-notification-item:hover {
+    background: var(--sa-input-bg);
+    border-radius: 8px;
+    margin: 0 -0.5rem;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+}
+
+.sa-notification-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 0.85rem;
+}
+
+.sa-notification-icon.danger {
+    background: rgba(239, 71, 111, 0.15);
+    color: var(--sa-danger);
+}
+
+.sa-notification-icon.warning {
+    background: rgba(255, 209, 102, 0.15);
+    color: #b8860b;
+}
+
+.sa-notification-icon.success {
+    background: rgba(6, 214, 160, 0.15);
+    color: var(--sa-success);
+}
+
+.sa-notification-icon.info {
+    background: rgba(72, 202, 228, 0.15);
+    color: var(--sa-info);
+}
+
+.sa-notification-time {
+    font-size: 0.75rem;
+    color: var(--sa-text-muted);
+    min-width: 40px;
+    padding-top: 0.15rem;
+    flex-shrink: 0;
+}
+
+.sa-notification-text {
+    flex: 1;
+    font-size: 0.8rem;
+    color: var(--sa-text-primary);
+    line-height: 1.4;
+}
+
+.sa-notification-badge {
+    font-size: 0.7rem;
+    padding: 0.15rem 0.6rem;
+    border-radius: 10px;
+    font-weight: 500;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.sa-notification-badge.peringatan {
+    background: rgba(239, 71, 111, 0.15);
+    color: var(--sa-danger);
+}
+
+.sa-notification-badge.info {
+    background: rgba(72, 202, 228, 0.15);
+    color: var(--sa-info);
+}
+
+/* ----------------------------------------------------------------
+   13. HISTORY TABLE
+   ---------------------------------------------------------------- */
+.sa-table-wrapper {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.sa-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.sa-table thead {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.sa-table thead th {
+    padding: 0.6rem;
+    border-bottom: 2px solid var(--sa-card-border);
+    background: var(--sa-table-header-bg);
+    color: var(--sa-text-secondary);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+    text-align: left;
+}
+
+.sa-table thead th:first-child {
+    border-radius: 8px 0 0 0;
+}
+
+.sa-table thead th:last-child {
+    border-radius: 0 8px 0 0;
+}
+
+.sa-table tbody td {
+    padding: 0.6rem;
+    font-size: 0.85rem;
+    color: var(--sa-text-primary);
+    border-bottom: 1px solid var(--sa-card-border);
+    vertical-align: middle;
+}
+
+.sa-table tbody tr:hover td {
+    background: var(--sa-input-bg);
+}
+
+.sa-table .badge-normal {
+    background: rgba(6, 214, 160, 0.15);
+    color: var(--sa-success);
+    padding: 0.2rem 0.6rem;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    display: inline-block;
+}
+
+.sa-table .badge-warning {
+    background: rgba(255, 209, 102, 0.15);
+    color: var(--sa-warning);
+    padding: 0.2rem 0.6rem;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    display: inline-block;
+}
+
+.sa-table .badge-danger {
+    background: rgba(239, 71, 111, 0.15);
+    color: var(--sa-danger);
+    padding: 0.2rem 0.6rem;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    display: inline-block;
+}
+
+/* ----------------------------------------------------------------
+   14. LOADING SPINNER
+   ---------------------------------------------------------------- */
+.sa-spin {
+    animation: saSpin 1s linear infinite;
+}
+
+@keyframes saSpin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* ----------------------------------------------------------------
+   15. ADMIN PAGES
+   ---------------------------------------------------------------- */
+.sa-admin-btn {
+    background: var(--sa-primary);
+    color: #fff;
+    border: none;
+    padding: 0.5rem 1.25rem;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    transition: opacity 0.2s ease;
+    cursor: pointer;
+}
+
+.sa-admin-btn:hover {
+    opacity: 0.85;
+    color: #fff;
+}
+
+.sa-admin-btn.danger {
+    background: var(--sa-danger);
+}
+
+.sa-admin-btn.success {
+    background: var(--sa-success);
+}
+
+.sa-form-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--sa-text-primary);
+    margin-bottom: 0.35rem;
+}
+
+.sa-form-control {
+    background: var(--sa-input-bg);
+    border: 1px solid var(--sa-card-border);
+    color: var(--sa-text-primary);
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.9rem;
+    font-family: 'Inter', sans-serif;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.sa-form-control:focus {
+    background: var(--sa-input-bg);
+    border-color: var(--sa-primary);
+    box-shadow: 0 0 0 3px rgba(0, 180, 216, 0.15);
+    color: var(--sa-text-primary);
+    outline: none;
+}
+
+.sa-form-control::placeholder {
+    color: var(--sa-text-muted);
+}
+
+.sa-form-select {
+    background: var(--sa-input-bg);
+    border: 1px solid var(--sa-card-border);
+    color: var(--sa-text-primary);
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.9rem;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    transition: border-color 0.2s ease;
+}
+
+.sa-form-select:focus {
+    border-color: var(--sa-primary);
+    box-shadow: 0 0 0 3px rgba(0, 180, 216, 0.15);
+    outline: none;
+}
+
+.sa-form-submit {
+    background: var(--sa-primary);
+    color: #fff;
+    border: none;
+    padding: 0.6rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: opacity 0.2s ease;
+}
+
+.sa-form-submit:hover {
+    opacity: 0.85;
+}
+
+/* ----------------------------------------------------------------
+   16. RESPONSIVE
+   ---------------------------------------------------------------- */
+@media (max-width: 991.98px) {
+    .sa-navbar {
+        padding: 0 1rem;
+    }
+
+    .sa-datetime {
+        display: none;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .sa-navbar-center {
+        display: none;
+    }
+
+    .sa-navbar {
+        height: 52px;
+        padding: 0 0.75rem;
+    }
+
+    .sa-brand-subtitle {
+        display: none;
+    }
+
+    .sa-brand-title {
+        font-size: 0.78rem;
+    }
+
+    .sa-metric-value {
+        font-size: 2.5rem;
+    }
+
+    .sa-metric-icon {
+        width: 48px;
+        height: 48px;
+        font-size: 1.2rem;
+    }
+
+    .sa-card {
+        padding: 1.25rem;
+        border-radius: 12px;
+    }
+
+    .sa-chart-container {
+        height: 180px;
+    }
+
+    .sa-navbar-right {
+        gap: 0.4rem;
+    }
+
+    .sa-nav-icon,
+    .sa-theme-toggle {
+        width: 32px;
+        height: 32px;
+        font-size: 1rem;
+    }
+
+    .sa-brand-logo {
+        width: 30px;
+        height: 30px;
+        font-size: 0.65rem;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .sa-manual-buttons {
+        flex-direction: column;
+    }
+
+    .sa-notification-badge {
+        display: none;
+    }
+}
+
+/* ----------------------------------------------------------------
+   17. UTILITIES
+   ---------------------------------------------------------------- */
+.sa-text-success { color: var(--sa-success) !important; }
+.sa-text-danger { color: var(--sa-danger) !important; }
+.sa-text-warning { color: var(--sa-warning) !important; }
+.sa-text-info { color: var(--sa-info) !important; }
+.sa-text-muted { color: var(--sa-text-muted) !important; }
+.sa-text-primary { color: var(--sa-primary) !important; }
+
+/* Fix Bootstrap dropdown caret for themed buttons */
+.sa-tab.dropdown-toggle::after {
+    margin-left: 0.5rem;
+    vertical-align: 0.15em;
+}
+
+/* ----------------------------------------------------------------
+   18. TRANSITION OVERRIDES (smooth theme switch)
+   ---------------------------------------------------------------- */
+.sa-card,
+.sa-navbar,
+.sa-table thead th,
+.sa-table tbody td,
+.sa-dropdown-menu,
+.sa-form-control,
+.sa-form-select {
+    transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}

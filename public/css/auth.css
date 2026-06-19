@@ -1,0 +1,274 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+}
+
+/* ============================================
+   AUTH PAGE — Full Screen Layout
+   ============================================ */
+.auth-page {
+    width: 100vw;
+    height: 100vh;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+}
+
+/* Background image (pseudo-element) */
+.auth-page::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: url('/images/aquaculture-bg.png') no-repeat center center;
+    background-size: cover;
+    z-index: 0;
+    filter: brightness(0.3);
+}
+
+/* Dark overlay gradient */
+.auth-page::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to right, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.3));
+    z-index: 0;
+}
+
+/* ============================================
+   AUTH CONTAINER — Flex wrapper
+   ============================================ */
+.auth-container {
+    display: flex;
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    z-index: 1;
+    position: relative;
+    padding: 2rem;
+}
+
+/* ============================================
+   LEFT SIDE — Branding
+   ============================================ */
+.auth-branding {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding-right: 4rem;
+}
+
+.auth-branding h1 {
+    font-size: 4.5rem;
+    font-weight: 800;
+    line-height: 1.1;
+    color: #ffffff;
+    font-family: 'Inter', sans-serif;
+}
+
+.auth-branding h1 span.highlight {
+    color: #4a90d9;
+    display: block;
+    position: relative;
+}
+
+.auth-branding h1 span.highlight::after {
+    content: '';
+    position: absolute;
+    bottom: -8px;
+    left: 0;
+    width: 60px;
+    height: 4px;
+    background: #4a90d9;
+    border-radius: 2px;
+}
+
+.auth-branding .auth-description {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.95rem;
+    margin-top: 1.5rem;
+    line-height: 1.7;
+    max-width: 500px;
+}
+
+/* ============================================
+   RIGHT SIDE — Form Wrapper & Card
+   ============================================ */
+.auth-form-wrapper {
+    width: 420px;
+    flex-shrink: 0;
+}
+
+.auth-card {
+    background: rgba(15, 23, 42, 0.75);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    padding: 2.5rem;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+}
+
+.auth-card h2 {
+    color: #ffffff;
+    font-size: 1.6rem;
+    font-weight: 700;
+    margin-bottom: 0.3rem;
+}
+
+.auth-card .auth-subtitle {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.85rem;
+    margin-bottom: 2rem;
+}
+
+/* ============================================
+   FORM ELEMENTS
+   ============================================ */
+.auth-form-group {
+    margin-bottom: 1.25rem;
+}
+
+.auth-form-group label {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.85rem;
+    font-weight: 500;
+    display: block;
+    margin-bottom: 0.4rem;
+}
+
+.auth-form-group input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: rgba(255, 255, 255, 0.9);
+    border: none;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-family: 'Inter', sans-serif;
+    color: #1a1a2e;
+    outline: none;
+    transition: all 0.3s ease;
+}
+
+.auth-form-group input:focus {
+    background: #ffffff;
+    box-shadow: 0 0 0 3px rgba(74, 144, 217, 0.3);
+}
+
+.auth-form-group input::placeholder {
+    color: #999;
+}
+
+/* ============================================
+   BUTTON
+   ============================================ */
+.auth-btn {
+    width: 100%;
+    padding: 0.8rem;
+    background: linear-gradient(135deg, #607d8b, #78909c);
+    color: #ffffff;
+    border: none;
+    border-radius: 25px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 0.5rem;
+}
+
+.auth-btn:hover {
+    background: linear-gradient(135deg, #546e7a, #607d8b);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.auth-btn:active {
+    transform: translateY(0);
+}
+
+/* ============================================
+   ERROR & LINKS
+   ============================================ */
+.auth-error {
+    color: #ef476f;
+    font-size: 0.8rem;
+    margin-top: 0.3rem;
+}
+
+.auth-link {
+    color: #4a90d9;
+    text-decoration: none;
+    font-size: 0.85rem;
+    transition: color 0.2s ease;
+}
+
+.auth-link:hover {
+    text-decoration: underline;
+}
+
+.auth-footer-links {
+    text-align: center;
+    margin-top: 1.5rem;
+}
+
+/* ============================================
+   RESPONSIVE — Tablet
+   ============================================ */
+@media (max-width: 992px) {
+    .auth-container {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+
+    .auth-branding {
+        padding-right: 0;
+        margin-bottom: 2rem;
+        align-items: center;
+    }
+
+    .auth-branding h1 {
+        font-size: 3rem;
+    }
+
+    .auth-branding h1 span.highlight::after {
+        left: 50%;
+        transform: translateX(-50%);
+    }
+
+    .auth-branding .auth-description {
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .auth-form-wrapper {
+        width: 100%;
+        max-width: 420px;
+    }
+}
+
+/* ============================================
+   RESPONSIVE — Mobile
+   ============================================ */
+@media (max-width: 576px) {
+    .auth-branding h1 {
+        font-size: 2.2rem;
+    }
+
+    .auth-card {
+        padding: 1.5rem;
+    }
+
+    .auth-container {
+        padding: 1rem;
+    }
+}
